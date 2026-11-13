@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Flip">
+<meta name="theme-color" content="#0b0b0c">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Flip Clock</title>
+<style>
+  :root {
+    --bg: #0b0b0c;
+    --card: #1b1b1d;
+    --card-2: #161618;
+    --ink: #ececec;
+    --muted: #6d6d72;
+    --hinge: #0b0b0c;
+    --w: min(40vw, 60vh);
+  }
+  body.light {
+    --bg: #e9e6e0;
+    --card: #fbfaf7;
+    --card-2: #f1efea;
+    --ink: #1c1c1d;
+    --muted: #8d8a84;
+    --hinge: #e9e6e0;
+  }
+  body.secs { --w: min(28vw, 54vh); }
+  @media (orientation: portrait) {
+    :root { --w: min(64vw, 33vh); }
+    body.secs { --w: min(46vw, 22vh); }
+    .clock { flex-direction: column; }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); overflow: hidden; }
+  body {
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    -webkit-user-select: none; user-select: none;
+    transition: background-color .4s ease;
+    cursor: default;
+  }
+
+  .clock { --h: calc(var(--w) * 1.12); --r: calc(var(--w) * 0.07); --gap: calc(var(--w) * 0.07); display: flex; gap: var(--gap); align-items: center; justify-content: center; }
+
+  .card {
+    position: relative;
+    width: var(--w); height: var(--h);
+    perspective: calc(var(--h) * 4);
+    font-size: calc(var(--w) * 0.66);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .card.hidden { display: none; }
+
+  .half, .leaf {
+    position: absolute; left: 0; right: 0; height: 50%;
+    overflow: hidden;
+    background: var(--card);
+  }
+  .top    { top: 0;    border-radius: var(--r) var(--r) 0 0; }
+  .bottom { bottom: 0; border-radius: 0 0 var(--r) var(--r); background: var(--card-2); }
+
+  .half span, .leaf span {
+    position: absolute; left: 0; right: 0; height: 200%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .top span    { top: 0; }
+  .bottom span { top: -100%; }
+
+  /* hinge */
+  .card::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%;
+    height: max(2px, calc(var(--w) * 0.012)); transform: translateY(-50%);
+    background: var(--hinge); z-index: 5;
+  }
+
+  .leaf { visibility: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; z-index: 3; }
+  .leaf.top    { transform-origin: 50% 100%; }
+  .leaf.bottom { transform-origin: 50% 0%; transform: rotateX(90deg); }
+
+  .card.flip .leaf { visibility: visible; }
+  .card.flip .leaf.top    { animation: flipTop .28s cubic-bezier(.55,.05,.9,.45) forwards; }
+  .card.flip .leaf.bottom { animation: flipBottom .32s cubic-bezier(.15,.6,.35,1.15) .28s forwards; }
+
+  @keyframes flipTop {
+    from { transform: rotateX(0deg);   filter: brightness(1); }
+    to   { transform: rotateX(-90deg); filter: brightness(.7); }
+  }
+  @keyframes flipBottom {
+    from { transform: rotateX(90deg); filter: brightness(1.25); }
+    to   { transform: rotateX(0deg);  filter: brightness(1); }
+  }
+
+  .ampm {
+    position: absolute; z-index: 6;
+    left: calc(var(--w) * 0.07); top: calc(var(--w) * 0.06);
+    font-size: calc(var(--w) * 0.065); font-weight: 600; letter-spacing: .06em;
+    color: var(--muted);
+  }
+
+  .date {
+    position: fixed; left: 0; right: 0;
+    bottom: calc(env(safe-area-inset-bottom) + 3.5vh);
+    text-align: center; color: var(--muted);
+    font-size: clamp(13px, 1.6vmax, 22px); font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .date.hidden { display: none; }
+
+  .controls {
+    position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 3vh);
+    transform: translate(-50%, -8px);
+    display: flex; gap: 6px; padding: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card) 85%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s ease, transform .3s ease;
+    z-index: 10;
+  }
+  .controls.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+  .controls button {
+    font: inherit; font-size: 14px; font-weight: 600;
+    color: var(--muted); background: transparent;
+    border: 0; border-radius: 999px; padding: 9px 14px;
+    cursor: pointer;
+  }
+  .controls button.on { color: var(--ink); background: color-mix(in srgb, var(--ink) 10%, transparent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card.flip .leaf { visibility: hidden; animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="controls" id="controls">
+    <button data-k="h24">24h</button>
+    <button data-k="secs">Seconds</button>
+    <button data-k="date">Date</button>
+    <button data-k="light">Light</button>
+  </div>
+
+  <main class="clock" id="clock"></main>
+  <div class="date" id="date"></div>
+
+<script>
+(() => {
+  const DEFAULTS = { h24: false, secs: false, date: true, light: false };
+  let prefs = { ...DEFAULTS };
+  try { prefs = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('flipclock') || '{}') }; } catch (e) {}
+  const save = () => { try { localStorage.setItem('flipclock', JSON.stringify(prefs)); } catch (e) {} };
+
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clock = document.getElementById('clock');
+  const dateEl = document.getElementById('date');
+  const controls = document.getElementById('controls');
+
+  function makeCard() {
+    const c = document.createElement('div');
+    c.className = 'card';
+    c.innerHTML =
+      '<div class="half top"><span></span></div>' +
+      '<div class="half bottom"><span></span></div>' +
+      '<div class="leaf top"><span></span></div>' +
+      '<div class="leaf bottom"><span></span></div>';
+    const s = c.querySelectorAll('span');
+    c._top = s[0]; c._bot = s[1]; c._leafTop = s[2]; c._leafBot = s[3];
+    clock.appendChild(c);
+    return c;
+  }
+
+  const hCard = makeCard(), mCard = makeCard(), sCard = makeCard();
+  const ampm = document.createElement('div');
+  ampm.className = 'ampm';
+  hCard.appendChild(ampm);
+
+  function setCard(card, val, animate) {
+    if (card._v === val) return;
+    const old = card._v;
+    card._v = val;
+    clearTimeout(card._t);
+    if (old === undefined || !animate || reduceMotion) {
+      card._top.textContent = card._bot.textContent = card._leafTop.textContent = card._leafBot.textContent = val;
+      card.classList.remove('flip');
+      return;
+    }
+    card._top.textContent = val;      // revealed behind the falling leaf
+    card._bot.textContent = old;      // stays until the new bottom lands
+    card._leafTop.textContent = old;
+    card._leafBot.textContent = val;
+    card.classList.remove('flip');
+    void card.offsetWidth;            // restart animation
+    card.classList.add('flip');
+    card._t = setTimeout(() => {
+      card._bot.textContent = val;
+      card.classList.remove('flip');
+    }, 640);
+  }
+
+  const pad = n => String(n).padStart(2, '0');
+
+  function render(animate = true) {
+    const d = new Date();
+    let h = d.getHours();
+    if (!prefs.h24) {
+      ampm.textContent = h < 12 ? 'AM' : 'PM';
+      h = h % 12 || 12;
+    } else {
+      ampm.textContent = '';
+    }
+    setCard(hCard, prefs.h24 ? pad(h) : String(h), animate);
+    setCard(mCard, pad(d.getMinutes()), animate);
+    if (prefs.secs) setCard(sCard, pad(d.getSeconds()), animate);
+    dateEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  let timer;
+  function tick() {
+    render(true);
+    timer = setTimeout(tick, 1000 - (Date.now() % 1000) + 10);
+  }
+
+  function applyPrefs() {
+    document.body.classList.toggle('light', prefs.light);
+    document.body.classList.toggle('secs', prefs.secs);
+    sCard.classList.toggle('hidden', !prefs.secs);
+    dateEl.classList.toggle('hidden', !prefs.date);
+    document.querySelector('meta[name=theme-color]').content = prefs.light ? '#e9e6e0' : '#0b0b0c';
+    controls.querySelectorAll('button').forEach(b => b.classList.toggle('on', !!prefs[b.dataset.k]));
+    sCard._v = undefined;
+    render(false);
+  }
+
+  // Tap anywhere to show settings; they fade away on their own.
+  let hideT;
+  function showControls() {
+    controls.classList.add('show');
+    clearTimeout(hideT);
+    hideT = setTimeout(() => controls.classList.remove('show'), 4000);
+  }
+  document.addEventListener('click', e => {
+    requestWake();
+    if (controls.contains(e.target)) return;
+    controls.classList.contains('show') ? controls.classList.remove('show') : showControls();
+  });
+  controls.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    prefs[b.dataset.k] = !prefs[b.dataset.k];
+    save(); applyPrefs(); showControls();
+  });
+
+  // Keep the screen awake where the browser allows it.
+  let wake = null;
+  async function requestWake() {
+    try {
+      if ('wakeLock' in navigator && !wake && document.visibilityState === 'visible') {
+        wake = await navigator.wakeLock.request('screen');
+        wake.addEventListener('release', () => { wake = null; });
+      }
+    } catch (e) { wake = null; }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      clearTimeout(timer);
+      render(false);
+      tick();
+      requestWake();
+    }
+  });
+
+  applyPrefs();
+  requestWake();
+  tick();
+})();
+</script>
+</body>
+</html>
