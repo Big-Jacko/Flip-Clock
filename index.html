@@ -28,10 +28,14 @@
     --muted: #8d8a84;
     --hinge: #e9e6e0;
   }
-  body.secs { --w: min(28vw, 54vh); }
+  body.three { --w: min(28vw, 54vh); }
+  body.tools { --w: min(40vw, 54vh); }
+  body.tools.three { --w: min(28vw, 50vh); }
   @media (orientation: portrait) {
     :root { --w: min(64vw, 33vh); }
-    body.secs { --w: min(46vw, 22vh); }
+    body.three { --w: min(46vw, 22vh); }
+    body.tools { --w: min(64vw, 30vh); }
+    body.tools.three { --w: min(46vw, 20vh); }
     .clock { flex-direction: column; }
   }
 
@@ -48,8 +52,12 @@
     transition: background-color .4s ease;
     cursor: default;
   }
+  body.tools { padding-bottom: calc(env(safe-area-inset-bottom) + 140px); }
 
-  .clock { --h: calc(var(--w) * 1.12); --r: calc(var(--w) * 0.07); --gap: calc(var(--w) * 0.07); display: flex; gap: var(--gap); align-items: center; justify-content: center; }
+  .clock {
+    --h: calc(var(--w) * 1.12); --r: calc(var(--w) * 0.07); --gap: calc(var(--w) * 0.07);
+    display: flex; gap: var(--gap); align-items: center; justify-content: center;
+  }
 
   .card {
     position: relative;
@@ -77,7 +85,6 @@
   .top span    { top: 0; }
   .bottom span { top: -100%; }
 
-  /* hinge */
   .card::after {
     content: ""; position: absolute; left: 0; right: 0; top: 50%;
     height: max(2px, calc(var(--w) * 0.012)); transform: translateY(-50%);
@@ -101,12 +108,15 @@
     to   { transform: rotateX(0deg);  filter: brightness(1); }
   }
 
-  .ampm {
+  .tag {
     position: absolute; z-index: 6;
     left: calc(var(--w) * 0.07); top: calc(var(--w) * 0.06);
     font-size: calc(var(--w) * 0.065); font-weight: 600; letter-spacing: .06em;
     color: var(--muted);
   }
+
+  body.alarm .clock { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
 
   .date {
     position: fixed; left: 0; right: 0;
@@ -114,27 +124,44 @@
     text-align: center; color: var(--muted);
     font-size: clamp(13px, 1.6vmax, 22px); font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
   }
-  .date.hidden { display: none; }
+  .hidden { display: none !important; }
 
   .controls {
     position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 3vh);
     transform: translate(-50%, -8px);
-    display: flex; gap: 6px; padding: 6px;
+    display: flex; align-items: center; gap: 4px; padding: 6px;
     border-radius: 999px;
     background: color-mix(in srgb, var(--card) 85%, transparent);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     opacity: 0; pointer-events: none;
     transition: opacity .3s ease, transform .3s ease;
-    z-index: 10;
+    z-index: 10; white-space: nowrap;
   }
   .controls.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
-  .controls button {
+  .sep { width: 1px; height: 20px; background: color-mix(in srgb, var(--ink) 15%, transparent); margin: 0 4px; }
+
+  button {
     font: inherit; font-size: 14px; font-weight: 600;
     color: var(--muted); background: transparent;
     border: 0; border-radius: 999px; padding: 9px 14px;
     cursor: pointer;
   }
-  .controls button.on { color: var(--ink); background: color-mix(in srgb, var(--ink) 10%, transparent); }
+  button.on { color: var(--ink); background: color-mix(in srgb, var(--ink) 10%, transparent); }
+
+  .actions {
+    position: fixed; left: 0; right: 0;
+    bottom: calc(env(safe-area-inset-bottom) + 3vh);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    z-index: 9;
+  }
+  .presets { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .presets button { padding: 8px 12px; }
+  .main { display: flex; gap: 10px; }
+  .main button {
+    font-size: 16px; padding: 13px 30px; min-width: 120px;
+    background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink);
+  }
+  .main button.primary { background: var(--ink); color: var(--bg); }
 
   @media (prefers-reduced-motion: reduce) {
     .card.flip .leaf { visibility: hidden; animation: none; }
@@ -143,27 +170,56 @@
 </head>
 <body>
   <div class="controls" id="controls">
-    <button data-k="h24">24h</button>
-    <button data-k="secs">Seconds</button>
-    <button data-k="date">Date</button>
+    <button data-mode="clock">Clock</button>
+    <button data-mode="timer">Timer</button>
+    <button data-mode="sw">Stopwatch</button>
+    <span class="sep"></span>
+    <button data-k="h24" class="clockonly">24h</button>
+    <button data-k="secs" class="clockonly">Seconds</button>
+    <button data-k="date" class="clockonly">Date</button>
     <button data-k="light">Light</button>
   </div>
 
   <main class="clock" id="clock"></main>
   <div class="date" id="date"></div>
 
+  <div class="actions hidden" id="actions">
+    <div class="presets" id="presets">
+      <button data-adj="-1">−1</button>
+      <button data-min="1">1</button>
+      <button data-min="3">3</button>
+      <button data-min="5">5</button>
+      <button data-min="10">10</button>
+      <button data-min="15">15</button>
+      <button data-min="25">25</button>
+      <button data-min="45">45</button>
+      <button data-min="60">60</button>
+      <button data-adj="1">+1</button>
+    </div>
+    <div class="main">
+      <button id="reset">Reset</button>
+      <button id="primary" class="primary">Start</button>
+    </div>
+  </div>
+
 <script>
 (() => {
-  const DEFAULTS = { h24: false, secs: false, date: true, light: false };
-  let prefs = { ...DEFAULTS };
-  try { prefs = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('flipclock') || '{}') }; } catch (e) {}
-  const save = () => { try { localStorage.setItem('flipclock', JSON.stringify(prefs)); } catch (e) {} };
+  const $ = id => document.getElementById(id);
+  const load = (k, d) => { try { return { ...d, ...JSON.parse(localStorage.getItem(k) || '{}') }; } catch (e) { return { ...d }; } };
+  let prefs = load('flipclock', { mode: 'clock', h24: false, secs: false, date: true, light: false });
+  let st = load('flipclock-state', { timerDur: 300, tRemain: 300, tEnd: null, swAcc: 0, swStart: null, alarm: false });
+  const persist = () => {
+    try {
+      localStorage.setItem('flipclock', JSON.stringify(prefs));
+      localStorage.setItem('flipclock-state', JSON.stringify(st));
+    } catch (e) {}
+  };
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const clock = document.getElementById('clock');
-  const dateEl = document.getElementById('date');
-  const controls = document.getElementById('controls');
+  const clock = $('clock'), dateEl = $('date'), controls = $('controls'), actions = $('actions');
+  const presets = $('presets'), primary = $('primary'), resetBtn = $('reset');
 
+  // ---------- cards ----------
   function makeCard() {
     const c = document.createElement('div');
     c.className = 'card';
@@ -171,17 +227,15 @@
       '<div class="half top"><span></span></div>' +
       '<div class="half bottom"><span></span></div>' +
       '<div class="leaf top"><span></span></div>' +
-      '<div class="leaf bottom"><span></span></div>';
+      '<div class="leaf bottom"><span></span></div>' +
+      '<div class="tag"></div>';
     const s = c.querySelectorAll('span');
     c._top = s[0]; c._bot = s[1]; c._leafTop = s[2]; c._leafBot = s[3];
+    c._tag = c.querySelector('.tag');
     clock.appendChild(c);
     return c;
   }
-
   const hCard = makeCard(), mCard = makeCard(), sCard = makeCard();
-  const ampm = document.createElement('div');
-  ampm.className = 'ampm';
-  hCard.appendChild(ampm);
 
   function setCard(card, val, animate) {
     if (card._v === val) return;
@@ -193,12 +247,12 @@
       card.classList.remove('flip');
       return;
     }
-    card._top.textContent = val;      // revealed behind the falling leaf
-    card._bot.textContent = old;      // stays until the new bottom lands
+    card._top.textContent = val;
+    card._bot.textContent = old;
     card._leafTop.textContent = old;
     card._leafBot.textContent = val;
     card.classList.remove('flip');
-    void card.offsetWidth;            // restart animation
+    void card.offsetWidth;
     card.classList.add('flip');
     card._t = setTimeout(() => {
       card._bot.textContent = val;
@@ -208,39 +262,157 @@
 
   const pad = n => String(n).padStart(2, '0');
 
-  function render(animate = true) {
-    const d = new Date();
-    let h = d.getHours();
-    if (!prefs.h24) {
-      ampm.textContent = h < 12 ? 'AM' : 'PM';
-      h = h % 12 || 12;
+  // ---------- time sources ----------
+  const timerLeft = now => st.tEnd ? Math.max(0, Math.ceil((st.tEnd - now) / 1000)) : st.tRemain;
+  const swElapsed = now => Math.floor((st.swAcc + (st.swStart ? now - st.swStart : 0)) / 1000);
+
+  let lastKey = '';
+  function update(animate = true) {
+    const now = Date.now();
+    let hv, mv, sv, showH, showS, tags;
+
+    if (prefs.mode === 'clock') {
+      const d = new Date(now);
+      let hr = d.getHours();
+      const ap = hr < 12 ? 'AM' : 'PM';
+      if (!prefs.h24) hr = hr % 12 || 12;
+      hv = prefs.h24 ? pad(hr) : String(hr);
+      mv = pad(d.getMinutes());
+      sv = pad(d.getSeconds());
+      showH = true; showS = prefs.secs;
+      tags = [prefs.h24 ? '' : ap, '', ''];
+      dateEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
     } else {
-      ampm.textContent = '';
+      let t;
+      if (prefs.mode === 'timer') {
+        t = timerLeft(now);
+        if (st.tEnd && t <= 0) { finish(); t = 0; }
+        showH = st.timerDur >= 3600;
+      } else {
+        t = swElapsed(now);
+        showH = t >= 3600;
+      }
+      hv = String(Math.floor(t / 3600));
+      mv = pad(Math.floor(t / 60) % 60);
+      sv = pad(t % 60);
+      showS = true;
+      tags = ['HR', 'MIN', 'SEC'];
     }
-    setCard(hCard, prefs.h24 ? pad(h) : String(h), animate);
-    setCard(mCard, pad(d.getMinutes()), animate);
-    if (prefs.secs) setCard(sCard, pad(d.getSeconds()), animate);
-    dateEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+    const key = [prefs.mode, showH, showS].join();
+    if (key !== lastKey) {
+      lastKey = key;
+      hCard.classList.toggle('hidden', !showH);
+      sCard.classList.toggle('hidden', !showS);
+      document.body.classList.toggle('three', showH && showS);
+      [hCard, mCard, sCard].forEach(c => c._v = undefined);
+      animate = false;
+    }
+    hCard._tag.textContent = tags[0];
+    mCard._tag.textContent = tags[1];
+    sCard._tag.textContent = tags[2];
+    if (showH) setCard(hCard, hv, animate);
+    setCard(mCard, mv, animate);
+    if (showS) setCard(sCard, sv, animate);
   }
 
-  let timer;
-  function tick() {
-    render(true);
-    timer = setTimeout(tick, 1000 - (Date.now() % 1000) + 10);
+  // ---------- sound ----------
+  let actx = null, chimeLoop = null, chimeStop = null;
+  function audio() {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+    } catch (e) { actx = null; }
+    return actx;
+  }
+  function ding() {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime;
+    [[880, 0], [1318.5, 0.18], [1760, 0.36]].forEach(([f, dt]) => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + dt);
+      g.gain.exponentialRampToValueAtTime(0.35, t + dt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dt + 1.2);
+      o.connect(g); g.connect(a.destination);
+      o.start(t + dt); o.stop(t + dt + 1.3);
+    });
+  }
+  function startChime() {
+    stopChime();
+    ding();
+    chimeLoop = setInterval(ding, 2000);
+    chimeStop = setTimeout(() => clearInterval(chimeLoop), 60000);
+  }
+  function stopChime() { clearInterval(chimeLoop); clearTimeout(chimeStop); }
+
+  // ---------- timer / stopwatch actions ----------
+  function finish() {
+    st.tEnd = null; st.tRemain = 0; st.alarm = true;
+    persist(); syncUI(); startChime();
+  }
+  function dismiss() {
+    stopChime();
+    st.alarm = false; st.tRemain = st.timerDur;
+    persist(); syncUI();
   }
 
-  function applyPrefs() {
+  primary.addEventListener('click', () => {
+    audio();
+    const now = Date.now();
+    if (prefs.mode === 'timer') {
+      if (st.alarm) return dismiss();
+      if (st.tEnd) { st.tRemain = timerLeft(now); st.tEnd = null; }
+      else { if (st.tRemain <= 0) st.tRemain = st.timerDur; st.tEnd = now + st.tRemain * 1000; }
+    } else {
+      if (st.swStart) { st.swAcc += now - st.swStart; st.swStart = null; }
+      else st.swStart = now;
+    }
+    persist(); syncUI(); update();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (prefs.mode === 'timer') { stopChime(); st.tEnd = null; st.tRemain = st.timerDur; st.alarm = false; }
+    else { st.swAcc = 0; st.swStart = null; }
+    persist(); syncUI(); update();
+  });
+
+  presets.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.min) st.timerDur = +b.dataset.min * 60;
+    else st.timerDur = Math.min(23 * 3600 + 59 * 60, Math.max(60, st.timerDur + (+b.dataset.adj) * 60));
+    st.tRemain = st.timerDur;
+    persist(); syncUI(); update();
+  });
+
+  function syncUI() {
+    const mode = prefs.mode, tools = mode !== 'clock';
     document.body.classList.toggle('light', prefs.light);
-    document.body.classList.toggle('secs', prefs.secs);
-    sCard.classList.toggle('hidden', !prefs.secs);
-    dateEl.classList.toggle('hidden', !prefs.date);
+    document.body.classList.toggle('tools', tools);
+    document.body.classList.toggle('alarm', mode === 'timer' && st.alarm);
     document.querySelector('meta[name=theme-color]').content = prefs.light ? '#e9e6e0' : '#0b0b0c';
-    controls.querySelectorAll('button').forEach(b => b.classList.toggle('on', !!prefs[b.dataset.k]));
-    sCard._v = undefined;
-    render(false);
+
+    controls.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+    controls.querySelectorAll('[data-k]').forEach(b => b.classList.toggle('on', !!prefs[b.dataset.k]));
+    controls.querySelectorAll('.clockonly').forEach(b => b.classList.toggle('hidden', tools));
+    dateEl.classList.toggle('hidden', tools || !prefs.date);
+    actions.classList.toggle('hidden', !tools);
+
+    if (mode === 'timer') {
+      const idle = !st.tEnd && !st.alarm && st.tRemain === st.timerDur;
+      presets.classList.toggle('hidden', !idle);
+      presets.querySelectorAll('[data-min]').forEach(b => b.classList.toggle('on', +b.dataset.min * 60 === st.timerDur));
+      primary.textContent = st.alarm ? 'Done' : st.tEnd ? 'Pause' : idle ? 'Start' : 'Resume';
+      resetBtn.classList.toggle('hidden', idle || st.alarm);
+    } else if (mode === 'sw') {
+      presets.classList.add('hidden');
+      const zero = !st.swStart && st.swAcc === 0;
+      primary.textContent = st.swStart ? 'Pause' : zero ? 'Start' : 'Resume';
+      resetBtn.classList.toggle('hidden', zero);
+    }
   }
 
-  // Tap anywhere to show settings; they fade away on their own.
+  // ---------- top bar ----------
   let hideT;
   function showControls() {
     controls.classList.add('show');
@@ -249,17 +421,19 @@
   }
   document.addEventListener('click', e => {
     requestWake();
-    if (controls.contains(e.target)) return;
+    if (actx) audio();
+    if (controls.contains(e.target) || actions.contains(e.target)) return;
+    if (prefs.mode === 'timer' && st.alarm) return dismiss();
     controls.classList.contains('show') ? controls.classList.remove('show') : showControls();
   });
   controls.addEventListener('click', e => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    prefs[b.dataset.k] = !prefs[b.dataset.k];
-    save(); applyPrefs(); showControls();
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.mode) prefs.mode = b.dataset.mode;
+    else prefs[b.dataset.k] = !prefs[b.dataset.k];
+    persist(); syncUI(); update(false); showControls();
   });
 
-  // Keep the screen awake where the browser allows it.
+  // ---------- keep awake ----------
   let wake = null;
   async function requestWake() {
     try {
@@ -269,19 +443,15 @@
       }
     } catch (e) { wake = null; }
   }
-
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      clearTimeout(timer);
-      render(false);
-      tick();
-      requestWake();
-    }
+    if (document.visibilityState === 'visible') { update(false); requestWake(); }
   });
 
-  applyPrefs();
+  syncUI();
+  update(false);
+  if (st.alarm && prefs.mode === 'timer') document.body.classList.add('alarm');
+  setInterval(() => update(true), 100);
   requestWake();
-  tick();
 })();
 </script>
 </body>
